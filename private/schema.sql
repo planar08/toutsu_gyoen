@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS schema_version (id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL);
+INSERT OR IGNORE INTO schema_version(id,version) VALUES(1,1);
+CREATE TABLE IF NOT EXISTS bookings (
+ id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, room TEXT NOT NULL,
+ checkin TEXT NOT NULL, checkout TEXT NOT NULL, name TEXT NOT NULL,
+ phone TEXT NOT NULL, email TEXT NOT NULL, adults INTEGER NOT NULL,
+ children INTEGER NOT NULL, extra INTEGER NOT NULL, breakfast INTEGER NOT NULL,
+ notes TEXT NOT NULL, total INTEGER NOT NULL, quote TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','cancelled')),
+ created TEXT NOT NULL, updated TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS nights(room TEXT NOT NULL,day TEXT NOT NULL,booking TEXT NOT NULL REFERENCES bookings(id),PRIMARY KEY(room,day));
+CREATE TABLE IF NOT EXISTS blocks(room TEXT NOT NULL,day TEXT NOT NULL,PRIMARY KEY(room,day));
+CREATE TABLE IF NOT EXISTS calendar(day TEXT PRIMARY KEY,kind TEXT NOT NULL CHECK(kind IN ('weekday','holiday','rack')));
+CREATE TABLE IF NOT EXISTS admin_users(id INTEGER PRIMARY KEY CHECK(id=1),username TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS attempts(key TEXT PRIMARY KEY,count INTEGER NOT NULL,bucket INTEGER NOT NULL);
+CREATE TRIGGER IF NOT EXISTS nights_not_blocked BEFORE INSERT ON nights WHEN EXISTS(SELECT 1 FROM blocks WHERE room=NEW.room AND day=NEW.day) BEGIN SELECT RAISE(ABORT,'room blocked'); END;
+CREATE TRIGGER IF NOT EXISTS blocks_not_confirmed BEFORE INSERT ON blocks WHEN EXISTS(SELECT 1 FROM nights WHERE room=NEW.room AND day=NEW.day) BEGIN SELECT RAISE(ABORT,'room confirmed'); END;
+CREATE INDEX IF NOT EXISTS nights_day ON nights(day);
+CREATE INDEX IF NOT EXISTS bookings_created ON bookings(created);
